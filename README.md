@@ -1,9 +1,9 @@
 # University Physics (OpenStax) — browsable HTML edition
 
-[![Deploy Eleventy site to Pages](https://github.com/veillette/university-physics-bundle/actions/workflows/deploy.yml/badge.svg)](https://github.com/veillette/university-physics-bundle/actions/workflows/deploy.yml)
-[![CI](https://github.com/veillette/university-physics-bundle/actions/workflows/ci.yml/badge.svg)](https://github.com/veillette/university-physics-bundle/actions/workflows/ci.yml)
+[![Deploy Eleventy site to Pages](https://github.com/QuadriviumPress/university-physics-bundle/actions/workflows/deploy.yml/badge.svg)](https://github.com/QuadriviumPress/university-physics-bundle/actions/workflows/deploy.yml)
+[![CI](https://github.com/QuadriviumPress/university-physics-bundle/actions/workflows/ci.yml/badge.svg)](https://github.com/veillette/university-physics-bundle/actions/workflows/ci.yml)
 
-**Read online: <https://veillette.github.io/university-physics-bundle/>**
+**Read online: <https://QuadriviumPress.github.io/university-physics-bundle/>**
 
 This repository wraps the OpenStax
 [osbooks-university-physics-bundle](https://github.com/openstax/osbooks-university-physics-bundle)
