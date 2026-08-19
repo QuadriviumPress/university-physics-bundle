@@ -1,7 +1,7 @@
 # University Physics (OpenStax) — browsable HTML edition
 
 [![Deploy Eleventy site to Pages](https://github.com/QuadriviumPress/university-physics-bundle/actions/workflows/deploy.yml/badge.svg)](https://github.com/QuadriviumPress/university-physics-bundle/actions/workflows/deploy.yml)
-[![CI](https://github.com/QuadriviumPress/university-physics-bundle/actions/workflows/ci.yml/badge.svg)](https://github.com/veillette/university-physics-bundle/actions/workflows/ci.yml)
+[![CI](https://github.com/QuadriviumPress/university-physics-bundle/actions/workflows/ci.yml/badge.svg)](https://github.com/QuadriviumPress/university-physics-bundle/actions/workflows/ci.yml)
 
 **Read online: <https://QuadriviumPress.github.io/university-physics-bundle/>**
 

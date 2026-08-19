@@ -7,11 +7,11 @@ export default {
     'covering mechanics, waves, thermodynamics, electricity and magnetism, optics, and ' +
     'modern physics.',
   author: 'OpenStax',
-  url: 'https://veillette.github.io',
+  url: 'https://quadriviumpress.github.io',
   // Absolute URL of the canonical deployment (origin + path prefix, no trailing
   // slash). Used for <link rel="canonical"> so every deployment (GitHub Pages,
   // Vercel) points search engines at the same copy.
-  baseUrl: 'https://veillette.github.io/university-physics-bundle',
+  baseUrl: 'https://quadriviumpress.github.io/university-physics-bundle',
   // GitHub repository URL for footer links and metadata.
-  repositoryUrl: 'https://github.com/veillette/university-physics-bundle',
+  repositoryUrl: 'https://github.com/QuadriviumPress/university-physics-bundle',
 };

@@ -195,7 +195,7 @@ if (numberingBad === 0) pass('figure/equation numbers sequential per chapter');
 // ---------- 5b. canonical links on duplicated shared pages ----------
 // The preface + 7 appendices are shared by all 3 volumes: 8 modules x 2
 // duplicate occurrences = 16 pages carrying <link rel="canonical">.
-const CANONICAL_ORIGIN = 'https://veillette.github.io';
+const CANONICAL_ORIGIN = 'https://quadriviumpress.github.io';
 let canonicalBad = 0;
 for (const [rel, href] of canonicals) {
   if (!href.startsWith(CANONICAL_ORIGIN + BASE_URL)) {
