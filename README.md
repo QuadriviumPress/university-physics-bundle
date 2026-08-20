@@ -8,7 +8,7 @@
 This repository wraps the OpenStax
 [osbooks-university-physics-bundle](https://github.com/openstax/osbooks-university-physics-bundle)
 CNXML source (a fork living in the [`source/`](./source) submodule, pinned at
-the `OpenPhysics/osbooks-university-physics-bundle` fork) and adds an
+the `QuadriviumPress/osbooks-university-physics-bundle` fork) and adds an
 [Eleventy](https://www.11ty.dev/) build that renders _University Physics_
 Volumes 1–3 (338 pages from 322 modules) as a browsable, installable web site.
 The submodule is the only place content (`source/collections/`,
@@ -51,11 +51,11 @@ deployment (GitHub Pages / Vercel), and gotchas.
 ## Updating the OpenStax source
 
 The textbook content is tracked as the `source/` submodule pointing at the
-`OpenPhysics/osbooks-university-physics-bundle` fork of OpenStax. To pull new
+`QuadriviumPress/osbooks-university-physics-bundle` fork of OpenStax. To pull new
 upstream errata:
 
 ```bash
-# 1. (in the fork) sync it with openstax upstream, push to OpenPhysics/...
+# 1. (in the fork) sync it with openstax upstream, push to QuadriviumPress/...
 # 2. (here) bump the submodule pointer to the fork's latest commit:
 cd source && git fetch origin && git checkout openstax/main && cd ..
 git add source
