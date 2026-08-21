@@ -55,6 +55,35 @@ function parser() {
     menuIcon.innerHTML = getIcon('bars', '1.2em');
   }
 
+  /** Read visited-page map from localStorage; never throw on corrupt data. */
+  const readVisited = () => {
+    try {
+      const raw = window.localStorage.getItem('visited');
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      return {};
+    }
+  };
+
+  /** Persist visited-page map; ignore quota / private-mode failures. */
+  const writeVisited = visited => {
+    try {
+      window.localStorage.setItem('visited', JSON.stringify(visited));
+    } catch {
+      /* ignore */
+    }
+  };
+
+  /** Find a ToC link by exact href without building a CSS selector from the path. */
+  const findTocLink = href => {
+    for (const a of bookSummary.querySelectorAll('.summary a[href]')) {
+      if (a.getAttribute('href') === href) return a;
+    }
+    return null;
+  };
+
   toggleSummary.addEventListener('click', event => {
     book.classList.toggle('with-summary');
     event.preventDefault();
@@ -149,7 +178,7 @@ function parser() {
 
     // Update the ToC to show which links have been visited
     // Add a "hidden" checkmark next to each item
-    const visitedLinks = JSON.parse(window.localStorage.visited) || {};
+    const visitedLinks = readVisited();
     const linkElements = summary.querySelectorAll('a[href]');
     linkElements.forEach(link => {
       const href = link.getAttribute('href');
@@ -190,7 +219,7 @@ function parser() {
    * @param {boolean} scroll
    */
   const expandTocChain = (pagePath, scroll = false) => {
-    const link = bookSummary.querySelector(`.summary a[href='${pagePath}']`);
+    const link = findTocLink(pagePath);
     if (!link) return;
     let el = link.closest('li');
     const currentLi = el;
@@ -396,11 +425,11 @@ function parser() {
     });
 
     const currentPagePath = new URL(href, window.location.href).pathname;
-    const visited = (window.localStorage.visited && JSON.parse(window.localStorage.visited)) || {};
-    visited[currentPagePath] = new Date();
-    window.localStorage.visited = JSON.stringify(visited);
+    const visited = readVisited();
+    visited[currentPagePath] = new Date().toISOString();
+    writeVisited(visited);
 
-    const currentLink = bookSummary.querySelector(`.summary a[href='${currentPagePath}']`);
+    const currentLink = findTocLink(currentPagePath);
     const listItem = currentLink ? currentLink.closest('li') : null;
 
     if (listItem !== null) {

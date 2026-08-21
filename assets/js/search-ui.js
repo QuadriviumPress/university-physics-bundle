@@ -165,13 +165,12 @@ class SearchUI {
 
     const resultsHTML = results
       .map((result, index) => {
-        // Highlight query in title
         const highlightedTitle = this.highlightText(result.title, query);
         const highlightedPreview = this.highlightText(result.preview, query);
 
         return `
         <div class="search-result-item" data-index="${index}">
-          <a href="${result.url}" class="search-result-link">
+          <a href="${this.escapeAttr(result.url || '')}" class="search-result-link">
             <div class="search-result-title">${highlightedTitle}</div>
             <div class="search-result-preview">${highlightedPreview}</div>
           </a>
@@ -189,7 +188,7 @@ class SearchUI {
   }
 
   /**
-   * Highlight query terms in text
+   * Escape text for safe insertion into HTML, then wrap query matches in <mark>.
    * @param {string} text - The text to highlight
    * @param {string} query - The query to highlight
    * @returns {string} HTML with highlighted terms
@@ -197,24 +196,34 @@ class SearchUI {
   highlightText(text, query) {
     if (!text) return '';
 
+    let highlightedText = this.escapeHtml(text);
     const terms = query.split(/\s+/).filter(t => t.length > 1);
-    let highlightedText = text;
 
     terms.forEach(term => {
-      const regex = new RegExp(`(${this.escapeRegex(term)})`, 'gi');
+      const regex = new RegExp(`(${this.escapeRegex(this.escapeHtml(term))})`, 'gi');
       highlightedText = highlightedText.replace(regex, '<mark>$1</mark>');
     });
 
     return highlightedText;
   }
 
-  /**
-   * Escape special regex characters
-   * @param {string} str - String to escape
-   * @returns {string} Escaped string
-   */
+  /** Escape special regex characters. */
   escapeRegex(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /** Escape text for HTML text/content contexts. */
+  escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  /** Escape a value for use inside a double-quoted HTML attribute. */
+  escapeAttr(str) {
+    return this.escapeHtml(str).replace(/'/g, '&#39;');
   }
 
   /**
@@ -224,7 +233,7 @@ class SearchUI {
   showMessage(message) {
     this.resultsContainer.style.display = 'block';
     this.resultsContainer.innerHTML = `
-      <div class="search-message">${message}</div>
+      <div class="search-message">${this.escapeHtml(message)}</div>
     `;
   }
 

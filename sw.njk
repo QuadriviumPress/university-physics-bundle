@@ -18,7 +18,9 @@
 const VERSION = '{{ build.time }}';
 const PREFIX = '{{ "/" | url | trimSlash }}'; // '' when root-hosted (Vercel)
 const PRECACHE = `precache-${VERSION}`;
-const RUNTIME = 'runtime-v1';
+// Versioned with the build so activate can drop the previous runtime cache
+// (visited HTML/media would otherwise accumulate unboundedly in runtime-v1).
+const RUNTIME = `runtime-${VERSION}`;
 
 const PRECACHE_URLS = [
   `${PREFIX}/`,
@@ -55,7 +57,13 @@ self.addEventListener('activate', event => {
       .then(keys =>
         Promise.all(
           keys
-            .filter(key => key.startsWith('precache-') && key !== PRECACHE)
+            .filter(
+              key =>
+                (key.startsWith('precache-') && key !== PRECACHE) ||
+                (key.startsWith('runtime-') && key !== RUNTIME) ||
+                // Legacy unversioned runtime from earlier builds
+                key === 'runtime-v1'
+            )
             .map(key => caches.delete(key))
         )
       )
