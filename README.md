@@ -42,6 +42,8 @@ npm ci
 npm run update:vendor   # copy self-hosted MathJax (+fonts) and MiniSearch into assets/
 npm run build           # build _site/ + search index
 npm run serve           # dev server at http://localhost:4000/university-physics-bundle/
+npm test                # unit tests over lib/ (no submodule or build needed)
+npm run lint            # eslint
 npm run verify          # post-build checks over _site/
 ```
 

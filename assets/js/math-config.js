@@ -6,7 +6,7 @@
 // Point it at the copy that `npm run update:mathjax` places under
 // assets/js/mathjax/fonts/. The site's URL prefix differs per deployment
 // (GitHub Pages vs Vercel), so derive it from this script's own src.
-var mathJaxFontsPath =
+const mathJaxFontsPath =
   document.currentScript.src.replace(/\/math-config\.js([?#].*)?$/, '') + '/mathjax/fonts';
 
 window.MathJax = {

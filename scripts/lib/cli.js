@@ -5,8 +5,10 @@
  * and help text generation across all scripts.
  */
 
-import { EXIT_CODES } from './constants.js';
 import { printHelp } from './reporter.js';
+
+/** Exit codes for consistent process termination. */
+const EXIT_CODES = { SUCCESS: 0, FAILURE: 1 };
 
 /**
  * Parse command-line arguments.
@@ -127,78 +129,4 @@ export async function runCli(config) {
     console.error('Error:', error.message);
     process.exit(EXIT_CODES.FAILURE);
   }
-}
-
-/**
- * Standard flag definitions used across scripts.
- */
-export const STANDARD_FLAGS = {
-  strict: {
-    flag: '--strict',
-    description: 'Enable stricter validation',
-    default: false,
-  },
-  apply: {
-    flag: '--apply',
-    description: 'Apply fixes to files (default is dry run)',
-    default: false,
-  },
-  fix: {
-    flag: '--fix',
-    description: 'Apply fixes to files (default is dry run)',
-    default: false,
-  },
-  dryRun: {
-    flag: '--dry-run',
-    description: 'Preview changes without modifying files',
-    default: false,
-  },
-  verbose: {
-    flag: ['-v', '--verbose'],
-    description: 'Show verbose output',
-    default: false,
-  },
-  quiet: {
-    flag: ['-q', '--quiet'],
-    description: 'Suppress non-essential output',
-    default: false,
-  },
-};
-
-/**
- * Create a combined check+fix script configuration.
- * @param {Object} baseFlags - Base flags for the script
- * @returns {Object} - Combined flags with mode detection
- */
-export function createCheckFixFlags(baseFlags = {}) {
-  return {
-    check: {
-      flag: '--check',
-      description: 'Run in check mode only (no fixes)',
-      default: false,
-    },
-    fix: {
-      flag: '--fix',
-      description: 'Apply fixes to files',
-      default: false,
-    },
-    strict: STANDARD_FLAGS.strict,
-    ...baseFlags,
-  };
-}
-
-/**
- * Determine the mode based on parsed options.
- * @param {Object} options - Parsed options
- * @returns {'check' | 'fix' | 'both'}
- */
-export function getMode(options) {
-  if (options.fix && !options.check) {
-    return 'fix';
-  }
-  if (options.check && !options.fix) {
-    return 'check';
-  }
-  // Default: check only (unless --fix is explicitly provided)
-  return options.fix ? 'both' : 'check';
 }

@@ -10,6 +10,26 @@
 
   <meta name="theme-color" content="#3367D6" />
 
+  {# Theme must be resolved before first paint, otherwise a dark-mode reader
+     gets a full white page until book-viewer.js has fetched the ToC. Kept
+     inline and blocking on purpose; book-viewer.js only toggles from here. #}
+  <script>
+    (function () {
+      var stored = null;
+      try {
+        stored = window.localStorage.getItem('darkMode');
+      } catch (e) {
+        /* storage blocked (private mode, sandboxed iframe) */
+      }
+      var dark =
+        stored === 'enabled' ||
+        (stored !== 'disabled' &&
+          window.matchMedia &&
+          window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (dark) document.documentElement.classList.add('dark-mode');
+    })();
+  </script>
+
   {# The shared preface/appendix modules are emitted once per volume; the
      duplicates carry canonicalUrl (set in lib/book-data.js) pointing at the
      volume-1 copy. Absolute URL on purpose: it must name the canonical
@@ -50,7 +70,6 @@
   <!-- Import the JavaScript module -->
   <!-- Order is important -->
   <script type="module" src="/assets/js/book-config.js"></script>
-  <script type="module" src="/assets/js/util.js"></script>
   <script type="module" src="/assets/js/book-viewer.js"></script>
   <script type="module" src="/assets/js/search.js"></script>
   <script type="module" src="/assets/js/search-ui.js"></script>

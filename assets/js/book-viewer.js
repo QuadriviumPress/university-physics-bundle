@@ -1,5 +1,4 @@
 import { BookConfig } from '../js/book-config.js';
-import { removeTrailingSlash, addTrailingSlash, mdToHtmlFix } from '../js/util.js';
 import { getIcon } from '../js/icons.js';
 
 const BOOK_TEMPLATE = `<div class="book with-summary font-size-2 font-family-1">
@@ -95,8 +94,10 @@ function parser() {
     return null;
   };
 
+  toggleSummary.setAttribute('aria-expanded', String(book.classList.contains('with-summary')));
   toggleSummary.addEventListener('click', event => {
-    book.classList.toggle('with-summary');
+    const shown = book.classList.toggle('with-summary');
+    toggleSummary.setAttribute('aria-expanded', String(shown));
     event.preventDefault();
   });
 
@@ -196,6 +197,7 @@ function parser() {
       const listItem = link.closest('li');
       const checkmarkIcon = document.createElement('i');
       checkmarkIcon.className = 'fa-check';
+      checkmarkIcon.setAttribute('aria-hidden', 'true');
       checkmarkIcon.innerHTML = getIcon('check', '1em');
       // Insert at the <li> level so chapter entries (wrapped in <p>) layout
       // correctly. Only a direct-child <p> counts — volume entries contain
@@ -252,12 +254,11 @@ function parser() {
 
     const currentUrl = new URL(window.location.href);
     currentUrl.hash = '';
-    const current = removeTrailingSlash(currentUrl.href);
-    let prev = tocHelper.prevPageHref(current);
-    let next = tocHelper.nextPageHref(current);
+    let prev = tocHelper.prevPageHref(currentUrl.href);
+    let next = tocHelper.nextPageHref(currentUrl.href);
 
     if (prev) {
-      prev = new URL(addTrailingSlash(prev), window.location.href).pathname;
+      prev = new URL(prev, window.location.href).pathname;
       const prevPage = document.createElement('a');
       prevPage.className = 'navigation navigation-prev';
       prevPage.href = prev;
@@ -267,7 +268,7 @@ function parser() {
     }
 
     if (next) {
-      next = new URL(addTrailingSlash(next), window.location.href).pathname;
+      next = new URL(next, window.location.href).pathname;
       const nextPage = document.createElement('a');
       nextPage.className = 'navigation navigation-next';
       nextPage.href = next;
@@ -275,45 +276,44 @@ function parser() {
       nextPage.innerHTML = getIcon('chevronRight', '1.5em');
       bookBody.appendChild(nextPage);
     }
-
-    renderDarkModeToggle();
   };
 
+  /**
+   * Build the theme toggle. The dark class itself is applied to <html> before
+   * first paint by the inline script in head.njk (which also honours the OS
+   * preference); this only reflects and flips that state. Created once — the
+   * button lives in .book-body and survives SPA navigations.
+   */
   const renderDarkModeToggle = () => {
-    // Remove existing dark mode toggle button
-    const existingToggle = bookBody.querySelector('.dark-mode-toggle');
-    if (existingToggle) {
-      existingToggle.remove();
-    }
+    const root = document.documentElement;
+    const media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
 
     const toggleBtn = document.createElement('button');
     toggleBtn.className = 'dark-mode-toggle';
     toggleBtn.title = 'Toggle Dark Mode';
     toggleBtn.setAttribute('aria-label', 'Toggle Dark Mode');
 
-    // Check if dark mode is already enabled from localStorage
-    const isDarkMode = storageGet('darkMode') === 'enabled';
-    if (isDarkMode) {
-      document.body.classList.add('dark-mode');
-      toggleBtn.innerHTML = getIcon('sun', '1.2em');
-    } else {
-      toggleBtn.innerHTML = getIcon('moon', '1.2em');
-    }
+    const syncButton = () => {
+      const isDarkMode = root.classList.contains('dark-mode');
+      toggleBtn.innerHTML = getIcon(isDarkMode ? 'sun' : 'moon', '1.2em');
+      toggleBtn.setAttribute('aria-pressed', String(isDarkMode));
+    };
+    syncButton();
 
-    // Add click event listener to toggle dark mode
     toggleBtn.addEventListener('click', () => {
-      document.body.classList.toggle('dark-mode');
-      const isDarkMode = document.body.classList.contains('dark-mode');
-
-      // Update localStorage
-      if (isDarkMode) {
-        storageSet('darkMode', 'enabled');
-        toggleBtn.innerHTML = getIcon('sun', '1.2em');
-      } else {
-        storageSet('darkMode', 'disabled');
-        toggleBtn.innerHTML = getIcon('moon', '1.2em');
-      }
+      const isDarkMode = root.classList.toggle('dark-mode');
+      storageSet('darkMode', isDarkMode ? 'enabled' : 'disabled');
+      syncButton();
     });
+
+    // Follow the OS preference while the reader has never chosen explicitly.
+    if (media && media.addEventListener) {
+      media.addEventListener('change', event => {
+        if (storageGet('darkMode')) return;
+        root.classList.toggle('dark-mode', event.matches);
+        syncButton();
+      });
+    }
 
     bookBody.appendChild(toggleBtn);
   };
@@ -324,39 +324,6 @@ function parser() {
    * @param {string} href
    */
   const newPageBeforeRender = (els, href) => {
-    els.querySelectorAll('a[href]').forEach(el => {
-      mdToHtmlFix(el);
-    });
-
-    els.querySelectorAll('img[title]').forEach(img => {
-      const id = img.getAttribute('id');
-      img.removeAttribute('id');
-      const figure = document.createElement('figure');
-      img.parentNode.insertBefore(figure, img);
-      figure.appendChild(img);
-      const caption = document.createElement('figcaption');
-      // Get title and fix double backslashes from HTML
-      let captionText = img.title;
-      // Convert double backslashes to single: \\theta -> \theta
-      captionText = captionText.replace(/\\\\/g, '\\');
-      // Match entire math pattern and convert: ( \theta_r = \theta_i ) -> $\theta_r = \theta_i$
-      captionText = captionText.replace(/\(\s+([^)]+?)\s+\)/g, '$$$1$$');
-      caption.textContent = captionText;
-      figure.appendChild(caption);
-      if (img.getAttribute('data-title')) {
-        const title = document.createElement('div');
-        title.className = 'title';
-        let titleText = img.getAttribute('data-title');
-        // Convert double backslashes to single
-        titleText = titleText.replace(/\\\\/g, '\\');
-        // Convert math delimiters
-        titleText = titleText.replace(/\(\s+([^)]+?)\s+\)/g, '$$$1$$');
-        title.textContent = titleText;
-        figure.insertBefore(title, img);
-      }
-      figure.setAttribute('id', id);
-    });
-
     els.querySelectorAll('.example, .exercise, .note').forEach(el => {
       const contents = Array.from(el.childNodes).filter(node => {
         return !node.classList || !node.classList.contains('title');
@@ -535,27 +502,17 @@ function parser() {
      */
     this.loadToc = function (toc) {
       this.toc = toc;
-      const tocUrl = new URL(BookConfig.toc.url, removeTrailingSlash(window.location.href));
-      const refElements = toc.querySelectorAll('a[href]');
+      const tocUrl = new URL(BookConfig.toc.url, window.location.href);
 
-      refElements.forEach(el => {
-        mdToHtmlFix(el);
-        const href = new URL(el.getAttribute('href'), tocUrl).pathname;
-        el.setAttribute('href', href);
+      // Normalize every ToC href to an absolute path so findTocLink can compare
+      // it against location.pathname by string equality.
+      toc.querySelectorAll('a[href]').forEach(el => {
+        el.setAttribute('href', new URL(el.getAttribute('href'), tocUrl).pathname);
       });
 
-      this._tocList = Array.from(toc.querySelectorAll('a[href]')).map(el => {
-        return new URL(el.getAttribute('href'), tocUrl).toString();
-      });
-
-      if (BookConfig.serverAddsTrailingSlash) {
-        const aElements = toc.querySelectorAll('a');
-        aElements.forEach(a => {
-          let href = a.getAttribute('href');
-          href = `../${href}`;
-          a.setAttribute('href', href);
-        });
-      }
+      this._tocList = Array.from(toc.querySelectorAll('a[href]')).map(el =>
+        new URL(el.getAttribute('href'), tocUrl).toString()
+      );
 
       return renderToc();
     };
@@ -592,7 +549,7 @@ function parser() {
 
   const tocHelper = new TocHelper();
 
-  fetch(BookConfig.urlFixer(BookConfig.toc.url), {
+  fetch(BookConfig.toc.url, {
     headers: {
       Accept: 'application/xhtml+xml',
     },
@@ -604,12 +561,9 @@ function parser() {
       return response.text();
     })
     .then(html => {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-      const root = doc.createElement('div');
-      root.innerHTML = html;
+      const doc = new DOMParser().parseFromString(html, 'text/html');
 
-      let toc = root.querySelector(BookConfig.toc.selector);
+      let toc = doc.body.querySelector(BookConfig.toc.selector);
       if (!toc) throw new Error('Table of contents response has no matching root element');
       if (toc.tagName.toLowerCase() === 'ul') {
         // HACK for collection HTML
@@ -646,6 +600,11 @@ function parser() {
   bookPage.append(altPage);
   // Typeset MathJax after content is in DOM
   typesetMath(altPage);
+  renderDarkModeToggle();
+
+  // The shell (including .book-summary) now exists. search-ui.js waits for
+  // this instead of polling for the sidebar to appear.
+  window.dispatchEvent(new CustomEvent('bookviewerready'));
 
   let activeNavigation = 0;
   let navigationController = null;
@@ -675,7 +634,7 @@ function parser() {
     bookPage.querySelector('.navigation-error')?.remove();
 
     try {
-      const response = await fetch(BookConfig.urlFixer(targetUrl.href), {
+      const response = await fetch(targetUrl.href, {
         headers: {
           Accept: 'application/xhtml+xml',
         },
@@ -703,7 +662,7 @@ function parser() {
           baseElement.remove();
         }
         const baseTag = document.createElement('base');
-        baseTag.setAttribute('href', BookConfig.urlFixer(targetUrl.href));
+        baseTag.setAttribute('href', targetUrl.href);
         book.prepend(baseTag);
       }
 
@@ -901,7 +860,6 @@ function parser() {
     if (fileExtensions.test(url.pathname)) return;
 
     event.preventDefault();
-    url.pathname = addTrailingSlash(url.pathname);
     changePage(url.href);
   });
 

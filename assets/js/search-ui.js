@@ -18,26 +18,19 @@ class SearchUI {
   }
 
   /**
-   * Initialize the search UI
-   * Creates search input and results container
+   * Initialize the search UI once book-viewer.js has built the shell.
+   * Idempotent: the event and the direct call below race harmlessly.
    */
   init() {
     if (this.isInitialized) {
       return;
     }
-
-    // Wait for book-summary to be ready
-    const checkInterval = setInterval(() => {
-      const bookSummary = document.querySelector('.book-summary');
-      if (bookSummary) {
-        clearInterval(checkInterval);
-        this.createSearchUI(bookSummary);
-        this.isInitialized = true;
-      }
-    }, 100);
-
-    // Timeout after 5 seconds
-    setTimeout(() => clearInterval(checkInterval), 5000);
+    const bookSummary = document.querySelector('.book-summary');
+    if (!bookSummary) {
+      return;
+    }
+    this.createSearchUI(bookSummary);
+    this.isInitialized = true;
   }
 
   /**
@@ -76,6 +69,8 @@ class SearchUI {
 
     // Attach event listeners
     this.attachEventListeners();
+    // The index is fetched lazily; when it lands, run whatever the reader has
+    // already typed.
     window.addEventListener('searchready', () => {
       const query = this.searchInput.value.trim();
       if (query.length >= 2) this.performSearch(query);
@@ -83,11 +78,24 @@ class SearchUI {
   }
 
   /**
+   * Start loading the ~2 MB index. Called on first focus/keystroke so a reader
+   * who never searches never pays for it.
+   */
+  warmIndex() {
+    searchManager.ensureReady();
+  }
+
+  /**
    * Attach event listeners to search UI elements
    */
   attachEventListeners() {
+    // Focusing the box is the earliest reliable signal that this reader intends
+    // to search; start fetching the index then rather than on page load.
+    this.searchInput.addEventListener('focus', () => this.warmIndex(), { once: true });
+
     // Search input event
     this.searchInput.addEventListener('input', e => {
+      this.warmIndex();
       const query = e.target.value.trim();
 
       // Show/hide clear button
@@ -142,9 +150,13 @@ class SearchUI {
       return;
     }
 
-    // Check if search is ready
+    // Index still loading (or the load failed and this is a retry): show
+    // progress and let the 'searchready' handler re-run this query.
     if (!searchManager.ready()) {
-      this.showMessage('Search is loading... Please wait.');
+      this.showMessage('Search is loading…');
+      searchManager.ensureReady().then(ok => {
+        if (!ok) this.showMessage('Search is unavailable offline until the index has loaded once.');
+      });
       return;
     }
 
@@ -276,14 +288,9 @@ class SearchUI {
 // Create singleton instance
 const searchUI = new SearchUI();
 
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    // Wait a bit for book-viewer to set up the layout
-    setTimeout(() => searchUI.init(), 500);
-  });
-} else {
-  setTimeout(() => searchUI.init(), 500);
-}
+// book-viewer.js replaces the whole body with its shell, then announces it.
+// Also try immediately, in case that already happened before this module ran.
+window.addEventListener('bookviewerready', () => searchUI.init());
+searchUI.init();
 
 export default searchUI;

@@ -1,14 +1,11 @@
-// some initial parameters
+// Defaults, overridden per page by window.Book (set in _includes/head.njk).
 export const BookConfig = {
-  urlFixer: val => val,
   toc: {
-    url: '../toc', // # or '../SUMMARY' for GitBook
-    selector: 'nav, ol, ul', // # picks the first one that matches
+    url: '../toc',
+    selector: 'nav, ol, ul', // picks the first one that matches
   },
-  baseHref: null, //  # or '//archive.cnx.org/contents'
-  serverAddsTrailingSlash: false,
+  baseHref: null,
   rootUrl: '',
-  includes: {},
 };
 
 // merge the initial parameters with the ones from the window

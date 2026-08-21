@@ -268,17 +268,20 @@ async function verify(options) {
   const searchIndexPath = path.join(siteRoot, 'search_index.json');
   if (fs.existsSync(searchIndexPath)) {
     const searchIndex = JSON.parse(fs.readFileSync(searchIndexPath, 'utf8'));
+    // Per-document title/url/preview live in the index's storedFields; the
+    // client reads them straight off each search result.
+    const storedDocs = Object.values(searchIndex.index?.storedFields ?? {});
     let indexBad = 0;
-    for (const doc of searchIndex.documents) {
+    for (const doc of storedDocs) {
       if (!doc.url || /index\.html$/.test(doc.url) || !existsAsPage(doc.url)) {
         indexBad++;
         if (indexBad <= 5) fail(`search index URL does not resolve: ${doc.url}`);
       }
     }
-    if (searchIndex.documents.length === 338 && indexBad === 0) {
+    if (storedDocs.length === 338 && indexBad === 0) {
       pass('search index has 338 documents with resolvable URLs');
-    } else if (searchIndex.documents.length !== 338) {
-      fail(`expected 338 search documents, found ${searchIndex.documents.length}`);
+    } else if (storedDocs.length !== 338) {
+      fail(`expected 338 search documents, found ${storedDocs.length}`);
     }
   } else {
     fail('search_index.json missing');

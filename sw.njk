@@ -22,32 +22,49 @@ const PRECACHE = `precache-${VERSION}`;
 // (visited HTML/media would otherwise accumulate unboundedly in runtime-v1).
 const RUNTIME = `runtime-${VERSION}`;
 
-const PRECACHE_URLS = [
+// Without these the site cannot render offline at all, so a failure here is
+// worth failing the install for (the browser retries on the next navigation).
+const CRITICAL_URLS = [
   `${PREFIX}/`,
   `${PREFIX}/SUMMARY.html`,
   `${PREFIX}/offline.html`,
-  `${PREFIX}/manifest.webmanifest`,
   `${PREFIX}/assets/css/theme.css`,
   `${PREFIX}/assets/css/book.css`,
-  `${PREFIX}/assets/css/print.css`,
-  `${PREFIX}/assets/js/math-config.js`,
   `${PREFIX}/assets/js/book-config.js`,
-  `${PREFIX}/assets/js/util.js`,
   `${PREFIX}/assets/js/icons.js`,
   `${PREFIX}/assets/js/book-viewer.js`,
+];
+
+// Nice to have offline, but each is individually recoverable: math falls back
+// to unrendered MathML, search to "still loading", and the runtime handlers
+// cache all of them on first use anyway. Fetched one by one so a single 404 or
+// flaky response cannot reject the whole install and leave the reader with no
+// service worker at all (cache.addAll is atomic).
+const OPTIONAL_URLS = [
+  `${PREFIX}/manifest.webmanifest`,
+  `${PREFIX}/assets/css/print.css`,
+  `${PREFIX}/assets/js/math-config.js`,
   `${PREFIX}/assets/js/search.js`,
   `${PREFIX}/assets/js/search-ui.js`,
-  `${PREFIX}/search_index.json`,
   `${PREFIX}/assets/js/vendor/minisearch.js`,
   `${PREFIX}/assets/js/mathjax/mml-chtml.js`,
   `${PREFIX}/assets/js/mathjax/fonts/mathjax-newcm-font/chtml.js`,
 ];
 
+// search_index.json is deliberately absent: it is ~2 MB and only needed once
+// the reader actually searches, at which point search.js fetches it and the
+// stale-while-revalidate handler caches it.
+
 self.addEventListener('install', event => {
   event.waitUntil(
     caches
       .open(PRECACHE)
-      .then(cache => cache.addAll(PRECACHE_URLS))
+      .then(async cache => {
+        await cache.addAll(CRITICAL_URLS);
+        await Promise.all(
+          OPTIONAL_URLS.map(url => cache.add(url).catch(() => undefined))
+        );
+      })
       .then(() => self.skipWaiting())
   );
 });

@@ -10,6 +10,8 @@
   "scripts": {
     "build": "eleventy",
     "postbuild": "node scripts/build-index.js",
+    "test": "node --test 'test/**/*.test.js'",
+    "lint": "eslint .",
     "serve": "eleventy --serve --port=4000",
     "verify": "node scripts/verify-build.js",
     "clean": "rm -rf _site",
@@ -20,10 +22,12 @@
   "license": "CC-BY-NC-SA-4.0",
   "devDependencies": {
     "@11ty/eleventy": "4.0.0-alpha.10",
-    "@11ty/gray-matter": "^2.1.0",
+    "@eslint/js": "^10.0.1",
     "chalk": "^5.6.2",
     "cheerio": "^1.2.0",
+    "eslint": "^10.8.1",
     "glob": "^13.0.6",
+    "globals": "^17.11.0",
     "mathjax": "^4.1.3",
     "minisearch": "^7.2.0"
   }

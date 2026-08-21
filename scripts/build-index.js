@@ -114,22 +114,18 @@ class SearchIndexBuilder {
 
     miniSearch.addAll(this.documents);
 
-    // Serialize the index
-    const indexData = {
-      index: miniSearch.toJSON(),
-      documents: this.documents.map(doc => ({
-        id: doc.id,
-        title: doc.title,
-        url: doc.url,
-        preview: doc.preview,
-      })),
-    };
+    // Serialize the index. title/url/preview are already carried per document
+    // in the index's storedFields (that is what storeFields is for), so no
+    // separate documents table is emitted — it would duplicate ~120 KB and
+    // force the client into a second lookup for data it already has.
+    const indexData = { index: miniSearch.toJSON() };
+    const serialized = JSON.stringify(indexData);
 
     // Write to file
     const outputPath = path.join(this.baseDir, this.siteDir, this.outputFile);
-    writeFile(outputPath, JSON.stringify(indexData));
+    writeFile(outputPath, serialized);
 
-    this.printResults(outputPath, JSON.stringify(indexData).length);
+    this.printResults(outputPath, serialized.length);
     return this.stats.errors === 0;
   }
 

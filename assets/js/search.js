@@ -1,14 +1,12 @@
 /**
  * Client-Side Search Module for Physics Book PWA
  *
- * This module provides offline-capable search functionality using MiniSearch.
- * It loads the pre-built search index and enables real-time fuzzy search.
+ * Offline-capable full-text search over the pre-built MiniSearch index.
  *
- * Features:
- * - Offline search using cached index
- * - Fuzzy matching with 0.2 tolerance
- * - Title boost for better relevance
- * - Real-time search as you type
+ * The index is ~2 MB, so it is fetched lazily — on the reader's first
+ * interaction with the search box, not on page load — and never precached by
+ * the service worker. Once fetched it is cached by the runtime handler, so
+ * later visits (including offline ones) resolve from cache.
  */
 
 // Self-hosted MiniSearch, copied from node_modules by `npm run update:minisearch`
@@ -18,46 +16,52 @@ import { BookConfig } from './book-config.js';
 class SearchManager {
   constructor() {
     this.miniSearch = null;
-    this.documents = [];
     this.isReady = false;
+    this.loadPromise = null;
     this.baseUrl = `${BookConfig.rootUrl || ''}/`;
   }
 
   /**
-   * Initialize the search index
-   * Loads and deserializes the search_index.json file
+   * Load and deserialize the search index. Safe to call repeatedly: the first
+   * call starts the fetch, later ones join it. A failed load is not cached, so
+   * a reader who was offline can retry simply by typing again.
+   * @returns {Promise<boolean>} True once the index is queryable
    */
-  async init() {
-    try {
-      const response = await fetch(`${this.baseUrl}search_index.json`);
-
-      if (!response.ok) {
-        throw new Error(`Failed to load search index: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      // Load MiniSearch instance from serialized data
-      // Note: loadJSON expects the raw JSON object, not a stringified version
-      this.miniSearch = MiniSearch.loadJS(data.index, {
-        fields: ['title', 'content'],
-        storeFields: ['title', 'url', 'preview'],
+  ensureReady() {
+    if (this.isReady) return Promise.resolve(true);
+    if (!this.loadPromise) {
+      this.loadPromise = this.load().catch(error => {
+        console.error('Failed to initialize search:', error);
+        this.loadPromise = null;
+        return false;
       });
-
-      this.documents = data.documents;
-      this.isReady = true;
-      window.dispatchEvent(new CustomEvent('searchready'));
-
-      return true;
-    } catch (error) {
-      console.error('Failed to initialize search:', error);
-      this.isReady = false;
-      return false;
     }
+    return this.loadPromise;
+  }
+
+  /** @private */
+  async load() {
+    const response = await fetch(`${this.baseUrl}search_index.json`);
+    if (!response.ok) {
+      throw new Error(`Failed to load search index: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // loadJS expects the parsed JSON object, not a stringified version. The
+    // field configuration must match the one build-index.js indexed with.
+    this.miniSearch = MiniSearch.loadJS(data.index, {
+      fields: ['title', 'content'],
+      storeFields: ['title', 'url', 'preview'],
+    });
+
+    this.isReady = true;
+    window.dispatchEvent(new CustomEvent('searchready'));
+    return true;
   }
 
   /**
-   * Perform a search query
+   * Perform a search query.
    * @param {string} query - The search query
    * @param {number} maxResults - Maximum number of results to return
    * @returns {Array} Array of search results
@@ -74,17 +78,15 @@ class SearchManager {
         prefix: true,
       });
 
-      // Limit results and enrich with document data
-      return results.slice(0, maxResults).map(result => {
-        const doc = this.documents.find(d => d.id === result.id);
-        return {
-          id: result.id,
-          title: doc?.title || result.title,
-          url: doc?.url || result.url,
-          preview: doc?.preview || result.preview,
-          score: result.score,
-        };
-      });
+      // title/url/preview come back on the result itself (storeFields), so
+      // there is no side table to look them up in.
+      return results.slice(0, maxResults).map(result => ({
+        id: result.id,
+        title: result.title,
+        url: result.url,
+        preview: result.preview,
+        score: result.score,
+      }));
     } catch (error) {
       console.error('Search error:', error);
       return [];
@@ -92,52 +94,18 @@ class SearchManager {
   }
 
   /**
-   * Get autocomplete suggestions
-   * @param {string} query - The partial query
-   * @param {number} maxSuggestions - Maximum number of suggestions
-   * @returns {Array} Array of suggestions
-   */
-  autoSuggest(query, maxSuggestions = 5) {
-    if (!this.isReady || !query || query.trim().length < 2) {
-      return [];
-    }
-
-    try {
-      const suggestions = this.miniSearch.autoSuggest(query, {
-        boost: { title: 2 },
-        fuzzy: 0.2,
-        prefix: true,
-      });
-
-      return suggestions.slice(0, maxSuggestions);
-    } catch (error) {
-      console.error('AutoSuggest error:', error);
-      return [];
-    }
-  }
-
-  /**
    * Check if search is ready
-   * @returns {boolean} True if search is initialized and ready
+   * @returns {boolean} True if the index is loaded and queryable
    */
   ready() {
     return this.isReady;
   }
 }
 
-// Create and export singleton instance
+// Create and export singleton instance. Deliberately NOT initialized here:
+// search-ui.js calls ensureReady() when the reader first uses the search box.
 const searchManager = new SearchManager();
 
-// Auto-initialize on load
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    searchManager.init();
-  });
-} else {
-  searchManager.init();
-}
-
-// Export for use in other modules
 export default searchManager;
 
 // Also make available globally for non-module scripts

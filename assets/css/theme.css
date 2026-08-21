@@ -1354,328 +1354,340 @@ h4 {
 
 /* ==================== Dark Mode Styles ==================== */
 
-body.dark-mode {
+/* The dark class lives on <html> (not <body>) so the inline script in head.njk
+   can set it before first paint. color-scheme keeps form controls, scrollbars,
+   and the canvas colour in step with the chosen theme. */
+:root {
+  color-scheme: light;
+}
+
+html.dark-mode {
+  color-scheme: dark;
+  background-color: var(--color-dark-bg-primary);
+}
+
+html.dark-mode body {
   background-color: var(--color-dark-bg-primary);
   color: var(--color-dark-text-primary);
 }
 
-:is(body.dark-mode .book, body.dark-mode .book .book-body) {
+:is(html.dark-mode body .book, html.dark-mode body .book .book-body) {
   background-color: var(--color-dark-bg-primary);
   color: var(--color-dark-text-primary);
 }
 
-body.dark-mode .book .book-summary {
+html.dark-mode body .book .book-summary {
   background-color: var(--color-dark-bg-secondary);
   border-inline-end: 1px solid var(--color-dark-bg-tertiary);
 }
 
-body.dark-mode .book.with-summary .toggle-summary {
+html.dark-mode body .book.with-summary .toggle-summary {
   background-color: var(--color-dark-bg-secondary);
   color: var(--color-dark-text-primary);
 }
 
-body.dark-mode .book .book-summary ul.summary li.part {
+html.dark-mode body .book .book-summary ul.summary li.part {
   color: var(--color-dark-text-primary);
 }
 
-body.dark-mode .book .book-summary ul.summary li a {
+html.dark-mode body .book .book-summary ul.summary li a {
   color: var(--color-dark-text-muted);
 }
 
-body.dark-mode .book .book-summary ul.summary li a:hover {
+html.dark-mode body .book .book-summary ul.summary li a:hover {
   color: var(--color-white);
 }
 
 :is(
-  body.dark-mode .book .book-summary ul.summary li.chapter::before,
-  body.dark-mode .book .book-summary ul.summary li.chapter > ol > li::before
+  html.dark-mode body .book .book-summary ul.summary li.chapter::before,
+  html.dark-mode body .book .book-summary ul.summary li.chapter > ol > li::before
 ) {
   color: var(--color-dark-text-primary);
 }
 
-body.dark-mode .book .book-body .page-wrapper .page-inner section.normal {
+html.dark-mode body .book .book-body .page-wrapper .page-inner section.normal {
   background-color: var(--color-dark-bg-primary);
   color: var(--color-dark-text-primary);
 }
 
-body.dark-mode .book .book-body .navigation {
+html.dark-mode body .book .book-body .navigation {
   color: rgb(255 255 255 / 0.3);
 }
 
-body.dark-mode .book .book-body .navigation:hover {
+html.dark-mode body .book .book-body .navigation:hover {
   color: rgb(255 255 255 / 0.7);
 }
 
-body.dark-mode .page-title {
+html.dark-mode body .page-title {
   color: #7b9ff5;
 }
 
 :is(
-  body.dark-mode h1,
-  body.dark-mode h2,
-  body.dark-mode h3,
-  body.dark-mode h4,
-  body.dark-mode h5,
-  body.dark-mode h6
+  html.dark-mode body h1,
+  html.dark-mode body h2,
+  html.dark-mode body h3,
+  html.dark-mode body h4,
+  html.dark-mode body h5,
+  html.dark-mode body h6
 ) {
   color: var(--color-dark-text-primary);
 }
 
-body.dark-mode .header-link:hover {
+html.dark-mode body .header-link:hover {
   color: var(--color-white) !important;
 }
 
-body.dark-mode a {
+html.dark-mode body a {
   color: var(--color-dark-link);
 }
 
-body.dark-mode a:hover {
+html.dark-mode body a:hover {
   color: var(--color-dark-link-hover);
 }
 
-body.dark-mode code {
+html.dark-mode body code {
   background-color: var(--color-dark-bg-secondary);
   color: var(--color-dark-text-primary);
   border: 1px solid var(--color-dark-bg-tertiary);
 }
 
-body.dark-mode pre {
+html.dark-mode body pre {
   background-color: var(--color-dark-bg-secondary);
   border: 1px solid var(--color-dark-bg-tertiary);
 }
 
-body.dark-mode pre code {
+html.dark-mode body pre code {
   background-color: transparent;
   border: none;
 }
 
-body.dark-mode .abstract {
+html.dark-mode body .abstract {
   background-color: #2a3344;
   color: var(--color-dark-text-primary);
 }
 
-body.dark-mode .abstract::before {
+html.dark-mode body .abstract::before {
   color: var(--color-dark-text-muted);
 }
 
-body.dark-mode .book .book-body .page-wrapper .page-inner section.glossary {
+html.dark-mode body .book .book-body .page-wrapper .page-inner section.glossary {
   background-color: #3a3f4a;
   color: var(--color-dark-text-primary);
 }
 
-body.dark-mode .glossary-title {
+html.dark-mode body .glossary-title {
   color: var(--color-dark-text-primary);
 }
 
-body.dark-mode .note {
+html.dark-mode body .note {
   background-color: var(--color-dark-bg-secondary);
 }
 
 :is(
-  body.dark-mode .note:not([data-label]).ui-has-child-title > header > .title,
-  body.dark-mode .note:not([data-label]).ui-has-child-title > .title,
-  body.dark-mode .note:not([data-label]):not(.ui-has-child-title)::before,
-  body.dark-mode .note[data-label=''].ui-has-child-title > header > .title,
-  body.dark-mode .note[data-label=''].ui-has-child-title > .title,
-  body.dark-mode .note[data-label='']:not(.ui-has-child-title)::before,
-  body.dark-mode .note[data-label]:not([data-label='']).ui-has-child-title > header > .title,
-  body.dark-mode .note[data-label]:not([data-label='']).ui-has-child-title > .title,
-  body.dark-mode .note[data-label]:not([data-label='']):not(.ui-has-child-title)::before
+  html.dark-mode body .note:not([data-label]).ui-has-child-title > header > .title,
+  html.dark-mode body .note:not([data-label]).ui-has-child-title > .title,
+  html.dark-mode body .note:not([data-label]):not(.ui-has-child-title)::before,
+  html.dark-mode body .note[data-label=''].ui-has-child-title > header > .title,
+  html.dark-mode body .note[data-label=''].ui-has-child-title > .title,
+  html.dark-mode body .note[data-label='']:not(.ui-has-child-title)::before,
+  html.dark-mode body .note[data-label]:not([data-label='']).ui-has-child-title > header > .title,
+  html.dark-mode body .note[data-label]:not([data-label='']).ui-has-child-title > .title,
+  html.dark-mode body .note[data-label]:not([data-label='']):not(.ui-has-child-title)::before
 ) {
   color: var(--color-dark-text-muted);
 }
 
-body.dark-mode .book .book-body .page-wrapper .page-inner .note > section {
+html.dark-mode body .book .book-body .page-wrapper .page-inner .note > section {
   background-color: var(--color-dark-bg-secondary);
   border-block-start-color: var(--color-dark-border);
 }
 
 :is(
-  body.dark-mode .example:not([data-label]).ui-has-child-title > header > .title,
-  body.dark-mode .example[data-label=''].ui-has-child-title > header > .title,
-  body.dark-mode .example[data-label]:not([data-label='']).ui-has-child-title > header > .title,
-  body.dark-mode .example:not([data-label]):not(.ui-has-child-title)::before,
-  body.dark-mode .example[data-label='']:not(.ui-has-child-title)::before,
-  body.dark-mode .example[data-label]:not([data-label='']):not(.ui-has-child-title)::before
+  html.dark-mode body .example:not([data-label]).ui-has-child-title > header > .title,
+  html.dark-mode body .example[data-label=''].ui-has-child-title > header > .title,
+  html.dark-mode body .example[data-label]:not([data-label='']).ui-has-child-title > header > .title,
+  html.dark-mode body .example:not([data-label]):not(.ui-has-child-title)::before,
+  html.dark-mode body .example[data-label='']:not(.ui-has-child-title)::before,
+  html.dark-mode body .example[data-label]:not([data-label='']):not(.ui-has-child-title)::before
 ) {
   background-color: var(--color-dark-bg-tertiary);
   color: var(--color-dark-text-primary);
 }
 
-body.dark-mode .book .book-body .page-wrapper .page-inner .example > section {
+html.dark-mode body .book .book-body .page-wrapper .page-inner .example > section {
   background-color: var(--color-dark-bg-secondary);
   border-block-start-color: var(--color-dark-border);
 }
 
 :is(
-  body.dark-mode .exercise:not([data-label]).ui-has-child-title > header > .title,
-  body.dark-mode .exercise[data-label=''].ui-has-child-title > header > .title,
-  body.dark-mode .exercise[data-label=''].ui-has-child-title > .title,
-  body.dark-mode .exercise:not([data-label]):not(.ui-has-child-title)::before,
-  body.dark-mode .exercise[data-label='']:not(.ui-has-child-title)::before
+  html.dark-mode body .exercise:not([data-label]).ui-has-child-title > header > .title,
+  html.dark-mode body .exercise[data-label=''].ui-has-child-title > header > .title,
+  html.dark-mode body .exercise[data-label=''].ui-has-child-title > .title,
+  html.dark-mode body .exercise:not([data-label]):not(.ui-has-child-title)::before,
+  html.dark-mode body .exercise[data-label='']:not(.ui-has-child-title)::before
 ) {
   background-color: var(--color-dark-bg-tertiary);
   color: var(--color-dark-text-primary);
 }
 
-body.dark-mode .book .book-body .page-wrapper .page-inner .exercise > section {
+html.dark-mode body .book .book-body .page-wrapper .page-inner .exercise > section {
   background-color: var(--color-dark-bg-secondary);
   border-block-start-color: var(--color-dark-border);
 }
 
-body.dark-mode .book .book-body .page-wrapper .page-inner :is(.example, .exercise) .solution {
+html.dark-mode body .book .book-body .page-wrapper .page-inner :is(.example, .exercise) .solution {
   border-block-start-color: var(--color-dark-border);
   background-color: var(--color-dark-bg-secondary);
   color: var(--color-dark-text-primary);
 }
 
-body.dark-mode .book .book-body .page-wrapper .page-inner :is(.example, .exercise) .solution > section {
+html.dark-mode body .book .book-body .page-wrapper .page-inner :is(.example, .exercise) .solution > section {
   background-color: var(--color-dark-bg-secondary);
   color: var(--color-dark-text-primary);
 }
 
 :is(
-  body.dark-mode .example[data-element-type='problems-exercises'] .solution::before,
-  body.dark-mode .exercise[data-element-type='problems-exercises'] .solution::before,
-  body.dark-mode .example[data-element-type='problems-exercises'] .problem::before,
-  body.dark-mode .exercise[data-element-type='problems-exercises'] .problem::before
+  html.dark-mode body .example[data-element-type='problems-exercises'] .solution::before,
+  html.dark-mode body .exercise[data-element-type='problems-exercises'] .solution::before,
+  html.dark-mode body .example[data-element-type='problems-exercises'] .problem::before,
+  html.dark-mode body .exercise[data-element-type='problems-exercises'] .problem::before
 ) {
   color: var(--color-dark-text-muted);
 }
 
-body.dark-mode .book .book-body .page-wrapper .page-inner section.normal table {
+html.dark-mode body .book .book-body .page-wrapper .page-inner section.normal table {
   background-color: var(--color-dark-bg-secondary);
   color: var(--color-dark-text-primary);
 }
 
-body.dark-mode .book .book-body .page-wrapper .page-inner section.normal table tr {
+html.dark-mode body .book .book-body .page-wrapper .page-inner section.normal table tr {
   border-block-start-color: var(--color-dark-border);
   background-color: var(--color-dark-bg-secondary);
 }
 
-body.dark-mode .book .book-body .page-wrapper .page-inner section.normal table tr:nth-child(2n) {
+html.dark-mode body .book .book-body .page-wrapper .page-inner section.normal table tr:nth-child(2n) {
   background-color: #252525;
 }
 
-body.dark-mode .book .book-body .page-wrapper .page-inner section.normal table tr th {
+html.dark-mode body .book .book-body .page-wrapper .page-inner section.normal table tr th {
   background-color: var(--color-dark-bg-tertiary);
   color: var(--color-dark-text-primary);
   border-color: var(--color-dark-border);
 }
 
-body.dark-mode .book .book-body .page-wrapper .page-inner section.normal table tr td {
+html.dark-mode body .book .book-body .page-wrapper .page-inner section.normal table tr td {
   background-color: transparent;
   color: var(--color-dark-text-primary);
   border-color: var(--color-dark-border);
 }
 
-body.dark-mode blockquote {
+html.dark-mode body blockquote {
   border-inline-start-color: var(--color-dark-border);
   color: var(--color-dark-text-muted);
 }
 
-body.dark-mode :target {
+html.dark-mode body :target {
   background-color: #3a3a00;
 }
 
-body.dark-mode figure {
+html.dark-mode body figure {
   border-color: var(--color-dark-bg-tertiary);
 }
 
-body.dark-mode figcaption {
+html.dark-mode body figcaption {
   background-color: var(--color-dark-bg-secondary);
   color: var(--color-dark-text-primary);
 }
 
-body.dark-mode mark {
+html.dark-mode body mark {
   background-color: #5a5000;
   color: #ffeb3b;
 }
 
 :is(
-  body.dark-mode .example[data-element-type='problems-exercises'] .problem::before,
-  body.dark-mode .exercise[data-element-type='problems-exercises'] .problem::before,
-  body.dark-mode .example[data-element-type='problems-exercises'] .solution::before,
-  body.dark-mode .exercise[data-element-type='problems-exercises'] .solution::before
+  html.dark-mode body .example[data-element-type='problems-exercises'] .problem::before,
+  html.dark-mode body .exercise[data-element-type='problems-exercises'] .problem::before,
+  html.dark-mode body .example[data-element-type='problems-exercises'] .solution::before,
+  html.dark-mode body .exercise[data-element-type='problems-exercises'] .solution::before
 ) {
   color: var(--color-dark-text-muted);
 }
 
-body.dark-mode .book-search {
+html.dark-mode body .book-search {
   background-color: var(--color-dark-bg-secondary);
   border-block-end-color: var(--color-dark-bg-tertiary);
 }
 
-body.dark-mode .search-input {
+html.dark-mode body .search-input {
   background-color: var(--color-dark-bg-primary);
   color: var(--color-dark-text-primary);
   border-color: var(--color-dark-bg-tertiary);
 }
 
-body.dark-mode .search-input::placeholder {
+html.dark-mode body .search-input::placeholder {
   color: #666;
 }
 
-body.dark-mode .search-input:focus {
+html.dark-mode body .search-input:focus {
   border-color: var(--color-dark-link);
 }
 
-body.dark-mode .search-clear {
+html.dark-mode body .search-clear {
   color: var(--color-dark-text-muted);
 }
 
-body.dark-mode .search-clear:hover {
+html.dark-mode body .search-clear:hover {
   color: var(--color-dark-text-primary);
 }
 
-body.dark-mode .search-results {
+html.dark-mode body .search-results {
   background-color: var(--color-dark-bg-secondary);
   border-color: var(--color-dark-bg-tertiary);
 }
 
-body.dark-mode .search-results-header {
+html.dark-mode body .search-results-header {
   background-color: var(--color-dark-bg-primary);
   border-block-end-color: var(--color-dark-bg-tertiary);
   color: var(--color-dark-text-muted);
 }
 
-body.dark-mode .search-result-link {
+html.dark-mode body .search-result-link {
   color: var(--color-dark-text-primary);
 }
 
-body.dark-mode .search-result-link:hover {
+html.dark-mode body .search-result-link:hover {
   background-color: var(--color-dark-bg-tertiary);
 }
 
-body.dark-mode .search-result-title {
+html.dark-mode body .search-result-title {
   color: var(--color-dark-link);
 }
 
-body.dark-mode .search-result-link:hover .search-result-title {
+html.dark-mode body .search-result-link:hover .search-result-title {
   color: var(--color-dark-link-hover);
 }
 
-body.dark-mode .search-result-preview {
+html.dark-mode body .search-result-preview {
   color: var(--color-dark-text-muted);
 }
 
-body.dark-mode .search-message {
+html.dark-mode body .search-message {
   color: var(--color-dark-text-muted);
 }
 
-body.dark-mode .btn-link {
+html.dark-mode body .btn-link {
   background: var(--color-dark-bg-tertiary) linear-gradient(to bottom, var(--color-dark-bg-tertiary) 5%, var(--color-dark-bg-secondary) 100%);
   border-color: var(--color-dark-border);
   color: var(--color-dark-text-primary);
   text-shadow: 0 1px 0 var(--color-black);
 }
 
-body.dark-mode .btn-link:hover {
+html.dark-mode body .btn-link:hover {
   background: var(--color-dark-bg-secondary) linear-gradient(to bottom, var(--color-dark-bg-secondary) 5%, var(--color-dark-bg-tertiary) 100%);
 }
 
-body.dark-mode .book .book-summary .resize-handle:hover,
-body.dark-mode .book .book-summary .resize-handle.resizing {
+html.dark-mode body .book .book-summary .resize-handle:hover,
+html.dark-mode body .book .book-summary .resize-handle.resizing {
   background-color: var(--color-dark-link);
 }
 
