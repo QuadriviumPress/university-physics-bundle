@@ -48,6 +48,14 @@ jobs:
       - name: Verify build
         run: npm run verify
 
+      - name: Build and verify root-hosted deployment
+        env:
+          VERCEL: "1"
+        run: |
+          npm run clean
+          npm run build
+          npm run verify -- --base-url /
+
       - name: Write build summary
         if: always()
         run: |

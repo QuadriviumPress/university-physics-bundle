@@ -76,6 +76,10 @@ class SearchUI {
 
     // Attach event listeners
     this.attachEventListeners();
+    window.addEventListener('searchready', () => {
+      const query = this.searchInput.value.trim();
+      if (query.length >= 2) this.performSearch(query);
+    });
   }
 
   /**
@@ -189,6 +193,9 @@ class SearchUI {
 
   /**
    * Escape text for safe insertion into HTML, then wrap query matches in <mark>.
+   * A single combined pass avoids one term's <mark> tags being matched (and
+   * corrupted) by a later term. Lookaround keeps matches out of escaped
+   * entities, so a query like "amp" cannot match inside &amp;.
    * @param {string} text - The text to highlight
    * @param {string} query - The query to highlight
    * @returns {string} HTML with highlighted terms
@@ -196,15 +203,28 @@ class SearchUI {
   highlightText(text, query) {
     if (!text) return '';
 
-    let highlightedText = this.escapeHtml(text);
-    const terms = query.split(/\s+/).filter(t => t.length > 1);
+    const escapedText = this.escapeHtml(text);
+    // Match the query against the *escaped* form of the text
+    const terms = query
+      .split(/\s+/)
+      .filter(t => t.length > 1)
+      .map(t => this.escapeHtml(t));
+    if (terms.length === 0) return escapedText;
 
-    terms.forEach(term => {
-      const regex = new RegExp(`(${this.escapeRegex(this.escapeHtml(term))})`, 'gi');
-      highlightedText = highlightedText.replace(regex, '<mark>$1</mark>');
-    });
+    // Longest-first so "theta" wins over "the" at the same position.
+    const alternation = terms
+      .map(t => this.escapeRegex(t))
+      .sort((a, b) => b.length - a.length)
+      .join('|');
 
-    return highlightedText;
+    let pattern;
+    try {
+      pattern = new RegExp(`(?<!&[a-zA-Z#0-9]{0,9})(${alternation})(?![a-zA-Z#0-9]{0,9};)`, 'gi');
+    } catch {
+      // Lookbehind unsupported: fall back to highlighting without the guard.
+      pattern = new RegExp(`(${alternation})`, 'gi');
+    }
+    return escapedText.replace(pattern, '<mark>$1</mark>');
   }
 
   /** Escape special regex characters. */

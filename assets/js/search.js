@@ -46,6 +46,7 @@ class SearchManager {
 
       this.documents = data.documents;
       this.isReady = true;
+      window.dispatchEvent(new CustomEvent('searchready'));
 
       return true;
     } catch (error) {

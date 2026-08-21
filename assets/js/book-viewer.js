@@ -55,10 +55,27 @@ function parser() {
     menuIcon.innerHTML = getIcon('bars', '1.2em');
   }
 
+  /** Storage may be unavailable in sandboxed or privacy-restricted contexts. */
+  const storageGet = key => {
+    try {
+      return window.localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  };
+
+  const storageSet = (key, value) => {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch {
+      /* ignore quota / privacy-mode failures */
+    }
+  };
+
   /** Read visited-page map from localStorage; never throw on corrupt data. */
   const readVisited = () => {
     try {
-      const raw = window.localStorage.getItem('visited');
+      const raw = storageGet('visited');
       if (!raw) return {};
       const parsed = JSON.parse(raw);
       return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
@@ -68,13 +85,7 @@ function parser() {
   };
 
   /** Persist visited-page map; ignore quota / private-mode failures. */
-  const writeVisited = visited => {
-    try {
-      window.localStorage.setItem('visited', JSON.stringify(visited));
-    } catch {
-      /* ignore */
-    }
-  };
+  const writeVisited = visited => storageSet('visited', JSON.stringify(visited));
 
   /** Find a ToC link by exact href without building a CSS selector from the path. */
   const findTocLink = href => {
@@ -95,8 +106,8 @@ function parser() {
   bookSummary.appendChild(resizeHandle);
 
   // Load saved sidebar width from localStorage
-  const savedWidth = localStorage.getItem('sidebarWidth');
-  if (savedWidth) {
+  const savedWidth = Number.parseInt(storageGet('sidebarWidth'), 10);
+  if (Number.isFinite(savedWidth)) {
     document.documentElement.style.setProperty('--sidebar-width', `${savedWidth}px`);
   }
 
@@ -142,7 +153,7 @@ function parser() {
       const currentWidth = parseInt(
         getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width')
       );
-      localStorage.setItem('sidebarWidth', currentWidth);
+      storageSet('sidebarWidth', String(currentWidth));
     }
   });
 
@@ -239,7 +250,9 @@ function parser() {
     const existingNavigation = bookBody.querySelectorAll('.navigation');
     existingNavigation.forEach(nav => nav.remove());
 
-    const current = removeTrailingSlash(window.location.href);
+    const currentUrl = new URL(window.location.href);
+    currentUrl.hash = '';
+    const current = removeTrailingSlash(currentUrl.href);
     let prev = tocHelper.prevPageHref(current);
     let next = tocHelper.nextPageHref(current);
 
@@ -279,7 +292,7 @@ function parser() {
     toggleBtn.setAttribute('aria-label', 'Toggle Dark Mode');
 
     // Check if dark mode is already enabled from localStorage
-    const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
+    const isDarkMode = storageGet('darkMode') === 'enabled';
     if (isDarkMode) {
       document.body.classList.add('dark-mode');
       toggleBtn.innerHTML = getIcon('sun', '1.2em');
@@ -294,10 +307,10 @@ function parser() {
 
       // Update localStorage
       if (isDarkMode) {
-        localStorage.setItem('darkMode', 'enabled');
+        storageSet('darkMode', 'enabled');
         toggleBtn.innerHTML = getIcon('sun', '1.2em');
       } else {
-        localStorage.setItem('darkMode', 'disabled');
+        storageSet('darkMode', 'disabled');
         toggleBtn.innerHTML = getIcon('moon', '1.2em');
       }
     });
@@ -328,7 +341,7 @@ function parser() {
       captionText = captionText.replace(/\\\\/g, '\\');
       // Match entire math pattern and convert: ( \theta_r = \theta_i ) -> $\theta_r = \theta_i$
       captionText = captionText.replace(/\(\s+([^)]+?)\s+\)/g, '$$$1$$');
-      caption.innerHTML = captionText;
+      caption.textContent = captionText;
       figure.appendChild(caption);
       if (img.getAttribute('data-title')) {
         const title = document.createElement('div');
@@ -466,13 +479,18 @@ function parser() {
     }
   };
 
+  // Give MathJax this many 100ms ticks to load before giving up (offline
+  // first visit, blocked script, ...) instead of retrying forever.
+  const TYPESET_MAX_RETRIES = 50;
+
   /**
    * Typeset MathJax content after element is in DOM
    * @param {Element} els - The element containing math to typeset
    * @param {boolean} clearFirst - Whether to clear previously typeset content
+   * @param {Function} [after] - Callback re-run once typesetting settles
    */
-  const typesetMath = (els, clearFirst = false) => {
-    const doTypeset = () => {
+  const typesetMath = (els, clearFirst = false, after = null) => {
+    const doTypeset = attempt => {
       if (typeof MathJax !== 'undefined' && MathJax.startup && MathJax.startup.promise) {
         MathJax.startup.promise
           .then(() => {
@@ -483,14 +501,23 @@ function parser() {
             // MathJax will automatically skip elements with 'mathjax-skip' class
             return MathJax.typesetPromise([els]);
           })
-          .catch(err => console.error('MathJax typeset failed:', err.message));
+          .then(() => {
+            if (after) after();
+          })
+          .catch(err => {
+            console.error('MathJax typeset failed:', err.message);
+            if (after) after();
+          });
+      } else if (attempt < TYPESET_MAX_RETRIES) {
+        setTimeout(() => doTypeset(attempt + 1), 100);
       } else {
-        setTimeout(doTypeset, 100);
+        console.warn('MathJax did not load; skipping typeset');
+        if (after) after();
       }
     };
 
     // Use requestAnimationFrame to ensure DOM is ready
-    requestAnimationFrame(doTypeset);
+    requestAnimationFrame(() => doTypeset(0));
   };
 
   /**
@@ -501,16 +528,13 @@ function parser() {
   function TocHelper() {
     // {string[]}
     this._tocList = [];
-    this._tocTitles = {};
 
     /**
      * @param {Element} toc
-     * @param {string} title
      * @returns {function}
      */
-    this.loadToc = function (toc, title) {
+    this.loadToc = function (toc) {
       this.toc = toc;
-      this.title = title;
       const tocUrl = new URL(BookConfig.toc.url, removeTrailingSlash(window.location.href));
       const refElements = toc.querySelectorAll('a[href]');
 
@@ -520,12 +544,8 @@ function parser() {
         el.setAttribute('href', href);
       });
 
-      this._tocTitles = {};
-      const self = this;
       this._tocList = Array.from(toc.querySelectorAll('a[href]')).map(el => {
-        const href = new URL(el.getAttribute('href'), tocUrl).toString();
-        self._tocTitles[href] = el.textContent;
-        return href;
+        return new URL(el.getAttribute('href'), tocUrl).toString();
       });
 
       if (BookConfig.serverAddsTrailingSlash) {
@@ -578,25 +598,34 @@ function parser() {
     },
   })
     .then(response => {
+      if (!response.ok) {
+        throw new Error(`Table of contents request failed with status ${response.status}`);
+      }
       return response.text();
     })
     .then(html => {
-      let title;
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
       const root = doc.createElement('div');
       root.innerHTML = html;
 
       let toc = root.querySelector(BookConfig.toc.selector);
+      if (!toc) throw new Error('Table of contents response has no matching root element');
       if (toc.tagName.toLowerCase() === 'ul') {
         // HACK for collection HTML
-        title = toc.firstElementChild.textContent;
         toc = toc.querySelector('ul');
-      } else {
-        title = doc.querySelector('title').textContent;
       }
+      if (!toc) throw new Error('Table of contents response has no nested list');
 
-      tocHelper.loadToc(toc, title);
+      tocHelper.loadToc(toc);
+    })
+    .catch(error => {
+      console.error('Failed to load table of contents:', error);
+      const message = document.createElement('p');
+      message.className = 'toc-error';
+      message.setAttribute('role', 'alert');
+      message.textContent = 'The table of contents could not be loaded. Reload the page to try again.';
+      bookSummary.appendChild(message);
     });
 
   //  # Fetch resources without fixing up their paths
@@ -618,27 +647,53 @@ function parser() {
   // Typeset MathJax after content is in DOM
   typesetMath(altPage);
 
+  let activeNavigation = 0;
+  let navigationController = null;
+
+  const showNavigationError = message => {
+    bookPage.querySelector('.navigation-error')?.remove();
+    const error = document.createElement('p');
+    error.className = 'navigation-error';
+    error.setAttribute('role', 'alert');
+    error.textContent = message;
+    bookPage.prepend(error);
+  };
+
   /**
-   *
+   * Fetch and render a page without allowing stale responses to win.
    * @param {string} href
-   * @returns {Promise<string>}
+   * @param {{ pushHistory?: boolean }} options
+   * @returns {Promise<boolean>}
    */
-  const changePage = href => {
+  const changePage = async (href, { pushHistory = true } = {}) => {
+    const targetUrl = new URL(href, window.location.href);
+    const navigationId = ++activeNavigation;
+    navigationController?.abort();
+    const controller = new AbortController();
+    navigationController = controller;
     book.classList.add('loading');
+    bookPage.querySelector('.navigation-error')?.remove();
 
-    const requestPromise = fetch(BookConfig.urlFixer(href), {
-      headers: {
-        Accept: 'application/xhtml+xml',
-      },
-    }).then(response => response.text());
-
-    return Promise.resolve(requestPromise).then(html => {
-      //# Use `window.location.origin` to get around a <base href=""> pointing to another hostname
-      if (!/https?:\/\//.test(href)) {
-        href = `${window.location.origin}${href}`;
+    try {
+      const response = await fetch(BookConfig.urlFixer(targetUrl.href), {
+        headers: {
+          Accept: 'application/xhtml+xml',
+        },
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        throw new Error(`Page request failed with status ${response.status}`);
       }
-      window.history.pushState(null, null, href);
-      renderNextPrev();
+      const html = await response.text();
+      if (navigationId !== activeNavigation) return false;
+
+      const parsed = new DOMParser().parseFromString(html, 'text/html');
+      const nextTitle = parsed.querySelector('title')?.textContent?.trim();
+      parsed.querySelectorAll('meta, link, script, title').forEach(el => el.remove());
+
+      if (pushHistory) {
+        window.history.pushState(null, '', targetUrl.href);
+      }
 
       // Need to set the URL *before* <img> tags area created
       // Fetch resources without fixing up their paths
@@ -648,73 +703,63 @@ function parser() {
           baseElement.remove();
         }
         const baseTag = document.createElement('base');
-        baseTag.setAttribute('href', BookConfig.urlFixer(href));
+        baseTag.setAttribute('href', BookConfig.urlFixer(targetUrl.href));
         book.prepend(baseTag);
       }
-
-      const htmlDivElement = document.createElement('div');
-
-      htmlDivElement.innerHTML = html;
-      htmlDivElement.querySelectorAll('meta, link, script').forEach(el => {
-        el.remove();
-      });
 
       bookPage.innerHTML = '';
       const altPage = document.createElement('div');
       altPage.className = 'contents';
-      altPage.append(...htmlDivElement.childNodes);
-      newPageBeforeRender(altPage, href);
+      altPage.append(...parsed.body.childNodes);
+      newPageBeforeRender(altPage, targetUrl.href);
       bookPage.append(altPage);
-      // Typeset MathJax after content is in DOM (clear previous content)
-      typesetMath(altPage, true);
-
-      book.classList.remove('loading');
+      if (nextTitle) document.title = nextTitle;
+      renderNextPrev();
 
       // Honor a #fragment on cross-page links (cross-module references);
-      // otherwise scroll to the top of the page.
-      const fragment = new URL(href, window.location.href).hash;
-      const target = fragment
-        ? altPage.querySelector(`#${CSS.escape(decodeURIComponent(fragment.slice(1)))}`)
-        : null;
-      if (target) {
-        target.scrollIntoView();
-      } else {
-        document.querySelector('.body-inner').scrollTop = 0;
+      // otherwise scroll to the top of the page. Scrolled twice: immediately,
+      // then again after MathJax typesetting, which can shift the target.
+      let fragmentId = '';
+      try {
+        fragmentId = decodeURIComponent(targetUrl.hash.slice(1));
+      } catch {
+        fragmentId = targetUrl.hash.slice(1);
       }
-    });
+      const scrollToTarget = () => {
+        const target = fragmentId ? altPage.querySelector(`#${CSS.escape(fragmentId)}`) : null;
+        if (target) {
+          target.scrollIntoView();
+        } else {
+          document.querySelector('.body-inner').scrollTop = 0;
+        }
+      };
+      scrollToTarget();
+      // Typeset MathJax after content is in DOM (clear previous content)
+      typesetMath(altPage, true, scrollToTarget);
+      return true;
+    } catch (error) {
+      if (error.name === 'AbortError') return false;
+      if (navigationId === activeNavigation) {
+        console.error('Failed to load page:', error);
+        showNavigationError('The requested page could not be loaded. Please try again.');
+      }
+      return false;
+    } finally {
+      if (navigationId === activeNavigation) {
+        book.classList.remove('loading');
+      }
+    }
   };
 
   document.body.addEventListener('keydown', event => {
-    const key = event.key; // "ArrowRight", "ArrowLeft", "ArrowUp", or "ArrowDown"
-
-    let link;
-    switch (key) {
-      case 'ArrowLeft':
-        // Left pressed
-        link = document.querySelector('.book .navigation-prev');
-        break;
-      case 'ArrowRight':
-        // Right pressed
-        link = document.querySelector('.book .navigation-next');
-        break;
-      case 'ArrowUp':
-        // Up pressed
-        link = null;
-        break;
-      case 'ArrowDown':
-        // Down pressed
-        link = null;
-        break;
-      default:
-        link = null;
-        break;
-    }
-
-    if (!document.activeElement.matches('.book-search-input')) {
-      if (link !== null) {
-        link.click();
-      }
-    }
+    if (document.activeElement.matches('input, textarea, select, [contenteditable="true"]')) return;
+    const link =
+      event.key === 'ArrowLeft'
+        ? document.querySelector('.book .navigation-prev')
+        : event.key === 'ArrowRight'
+          ? document.querySelector('.book .navigation-next')
+          : null;
+    if (link) link.click();
   });
 
   // Swipe navigation for mobile
@@ -818,38 +863,50 @@ function parser() {
   );
 
   document.body.addEventListener('click', event => {
-    let target = event.target;
-    while (target && target.tagName !== 'A') {
-      target = target.parentNode;
-    }
-
     if (
-      target &&
-      target.getAttribute('href') &&
-      !target.getAttribute('href').startsWith('#') &&
-      !target.getAttribute('href').startsWith('https')
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
     ) {
-      const href = target.getAttribute('href');
-
-      // Open PDFs in new tab to use browser's PDF viewer
-      if (/\.pdf$/i.test(href)) {
-        event.preventDefault();
-        window.open(href, '_blank');
-        return;
-      }
-
-      // Don't intercept other file downloads (ZIP, etc.)
-      const fileExtensions = /\.(zip|tar|gz|rar|7z|doc|docx|xls|xlsx|ppt|pptx)$/i;
-      if (fileExtensions.test(href)) {
-        // Let the browser handle file downloads normally
-        return;
-      }
-
-      event.preventDefault();
-      const hrefRelative = addTrailingSlash(href);
-      const hrefAbsolute = new URL(hrefRelative, window.location.href).toString();
-      changePage(hrefAbsolute);
+      return;
     }
+
+    const target = event.target instanceof Element ? event.target.closest('a[href]') : null;
+    if (!target || target.hasAttribute('download') || target.target) return;
+
+    const rawHref = target.getAttribute('href');
+    if (!rawHref || rawHref.startsWith('#')) return;
+
+    let url;
+    try {
+      url = new URL(rawHref, window.location.href);
+    } catch {
+      return;
+    }
+    if (!['http:', 'https:'].includes(url.protocol) || url.origin !== window.location.origin) return;
+
+    const appRoot = BookConfig.rootUrl || '';
+    if (appRoot && url.pathname !== appRoot && !url.pathname.startsWith(`${appRoot}/`)) return;
+
+    // Open same-origin PDFs in a new tab; let all other downloads use the browser.
+    if (/\.pdf$/i.test(url.pathname)) {
+      event.preventDefault();
+      window.open(url.href, '_blank', 'noopener');
+      return;
+    }
+    const fileExtensions = /\.(zip|tar|gz|rar|7z|doc|docx|xls|xlsx|ppt|pptx)$/i;
+    if (fileExtensions.test(url.pathname)) return;
+
+    event.preventDefault();
+    url.pathname = addTrailingSlash(url.pathname);
+    changePage(url.href);
+  });
+
+  window.addEventListener('popstate', () => {
+    changePage(window.location.href, { pushHistory: false });
   });
 }
 

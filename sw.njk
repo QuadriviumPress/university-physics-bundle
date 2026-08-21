@@ -25,6 +25,7 @@ const RUNTIME = `runtime-${VERSION}`;
 const PRECACHE_URLS = [
   `${PREFIX}/`,
   `${PREFIX}/SUMMARY.html`,
+  `${PREFIX}/offline.html`,
   `${PREFIX}/manifest.webmanifest`,
   `${PREFIX}/assets/css/theme.css`,
   `${PREFIX}/assets/css/book.css`,
@@ -36,6 +37,7 @@ const PRECACHE_URLS = [
   `${PREFIX}/assets/js/book-viewer.js`,
   `${PREFIX}/assets/js/search.js`,
   `${PREFIX}/assets/js/search-ui.js`,
+  `${PREFIX}/search_index.json`,
   `${PREFIX}/assets/js/vendor/minisearch.js`,
   `${PREFIX}/assets/js/mathjax/mml-chtml.js`,
   `${PREFIX}/assets/js/mathjax/fonts/mathjax-newcm-font/chtml.js`,
@@ -85,11 +87,17 @@ async function networkFirst(request) {
   const cache = await caches.open(RUNTIME);
   try {
     const response = await fetch(request);
-    if (response.ok) cache.put(request, response.clone());
+    if (response.ok) await cache.put(request, response.clone());
     return response;
   } catch {
     const cached = await caches.match(request);
     if (cached) return cached;
+    // Navigations to a never-visited page get the precached offline page
+    // instead of a browser error.
+    if (request.mode === 'navigate') {
+      const offline = await caches.match(`${PREFIX}/offline.html`);
+      if (offline) return offline;
+    }
     throw new Error(`offline and not cached: ${request.url}`);
   }
 }
@@ -100,7 +108,7 @@ async function cacheFirst(request) {
   const response = await fetch(request);
   if (response.ok) {
     const cache = await caches.open(RUNTIME);
-    cache.put(request, response.clone());
+    await cache.put(request, response.clone());
   }
   return response;
 }

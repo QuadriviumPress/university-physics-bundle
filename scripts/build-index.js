@@ -21,9 +21,12 @@ import path from 'path';
 import { glob } from 'glob';
 import * as cheerio from 'cheerio';
 import MiniSearch from 'minisearch';
+import { PATH_PREFIX } from '../eleventy.config.js';
 import { printHeader, printDivider, printSuccess, printSummary } from './lib/reporter.js';
 import { runCli } from './lib/cli.js';
 import { getBaseDir, readFile, writeFile } from './lib/files.js';
+
+const DEFAULT_BASE_URL = PATH_PREFIX;
 
 /**
  * Search index builder class.
@@ -33,7 +36,8 @@ class SearchIndexBuilder {
     this.baseDir = getBaseDir(import.meta.url);
     this.siteDir = options.siteDir || '_site';
     this.outputFile = options.output || 'search_index.json';
-    this.baseUrl = options.baseUrl || '/university-physics-bundle/';
+    const baseUrl = options.baseUrl || DEFAULT_BASE_URL;
+    this.baseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
 
     this.stats = {
       filesFound: 0,
@@ -148,8 +152,16 @@ class SearchIndexBuilder {
         $('h1').first().text().trim() ||
         'Untitled';
 
-      // Extract main content
-      const bodyText = $('body').text();
+      // Include image descriptions in search. Some appendices consist entirely
+      // of a diagram whose substantive content is carried by its alt text.
+      const imageText = $('img[alt]')
+        .map((_, el) => $(el).attr('alt'))
+        .get()
+        .join(' ');
+
+      // Extract complete main content. Truncating here makes terms later in a
+      // long textbook section impossible to find.
+      const bodyText = `${$('body').text()} ${imageText}`;
       const content = bodyText.replace(/\s+/g, ' ').trim();
 
       // Skip if no content
@@ -159,15 +171,18 @@ class SearchIndexBuilder {
         return null;
       }
 
-      // Generate URL path relative to site
+      // Generate URL path relative to site. Strip the trailing index.html so
+      // URLs match the directory form the ToC uses — the viewer keys prev/next
+      // navigation, ToC highlighting, and visited-tracking off exact hrefs.
       let url = path.relative(this.siteDir, relativePath);
+      url = url.replace(/index\.html$/, '');
       url = `${this.baseUrl}${url}`;
 
       // Create document for index
       this.documents.push({
         id: docId,
         title,
-        content: content.substring(0, 5000),
+        content,
         url,
         preview: `${content.substring(0, 200).trim()}...`,
       });
@@ -230,9 +245,9 @@ Requires Eleventy to have built the site first (npm run build).`,
     },
     baseUrl: {
       flag: '--base-url',
-      description: 'Base URL for links (default: /university-physics-bundle/)',
+      description: `Base URL for links (default: ${DEFAULT_BASE_URL})`,
       type: 'string',
-      default: '/university-physics-bundle/',
+      default: DEFAULT_BASE_URL,
     },
   },
   examples: [

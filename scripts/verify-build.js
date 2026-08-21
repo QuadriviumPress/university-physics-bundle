@@ -158,7 +158,7 @@ async function verify(options) {
     const volMatch = rel.match(/^(university-physics-volume-\d)\/((\d+)-[^/]*)\/index\.html$/);
     if (volMatch) {
       const key = `${volMatch[1]}/ch${volMatch[3]}`;
-      if (!chapterNumbers.has(key)) chapterNumbers.set(key, { figure: [], equation: [], page: [] });
+      if (!chapterNumbers.has(key)) chapterNumbers.set(key, { figure: [], equation: [] });
       const bucket = chapterNumbers.get(key);
       $('.figure-number').each((_, el) => {
         const m2 = $(el)
@@ -225,9 +225,10 @@ async function verify(options) {
     for (const kind of ['figure', 'equation']) {
       const nums = bucket[kind].map(x => x[1]);
       if (nums.length === 0) continue;
-      const sorted = [...new Set(nums)].sort((a, b) => a - b);
+      const unique = new Set(nums);
+      const sorted = [...unique].sort((a, b) => a - b);
       const max = sorted[sorted.length - 1];
-      if (sorted.length !== max || sorted[0] !== 1) {
+      if (unique.size !== nums.length || sorted.length !== max || sorted[0] !== 1) {
         numberingBad++;
         if (numberingBad <= 5) fail(`${key}: ${kind} numbers not 1..${max} without gaps/dupes`);
       }
@@ -260,6 +261,29 @@ async function verify(options) {
     fail(`expected 16 canonical links, found ${canonicals.size}`);
   }
 
+  // ---------- 5b. search index URLs resolve to emitted pages ----------
+  // URLs must use the directory form (.../preface/) matching the ToC links —
+  // the viewer keys prev/next, ToC highlight, and visited-tracking off exact
+  // hrefs, so an index.html suffix silently breaks all three.
+  const searchIndexPath = path.join(siteRoot, 'search_index.json');
+  if (fs.existsSync(searchIndexPath)) {
+    const searchIndex = JSON.parse(fs.readFileSync(searchIndexPath, 'utf8'));
+    let indexBad = 0;
+    for (const doc of searchIndex.documents) {
+      if (!doc.url || /index\.html$/.test(doc.url) || !existsAsPage(doc.url)) {
+        indexBad++;
+        if (indexBad <= 5) fail(`search index URL does not resolve: ${doc.url}`);
+      }
+    }
+    if (searchIndex.documents.length === 338 && indexBad === 0) {
+      pass('search index has 338 documents with resolvable URLs');
+    } else if (searchIndex.documents.length !== 338) {
+      fail(`expected 338 search documents, found ${searchIndex.documents.length}`);
+    }
+  } else {
+    fail('search_index.json missing');
+  }
+
   // ---------- 6. learning objectives ----------
   if (abstracts.size === 270) pass('270 pages with learning-objectives boxes');
   else fail(`expected 270 pages with .abstract, found ${abstracts.size}`);
@@ -279,8 +303,10 @@ async function verify(options) {
     'SUMMARY.html',
     'summary.json',
     'index.html',
+    'offline.html',
     'manifest.webmanifest',
     'sw.js',
+    'search_index.json',
     'assets/icons/icon-192.png',
     'assets/icons/icon-512.png',
     'assets/js/vendor/minisearch.js',
